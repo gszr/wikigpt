@@ -15,5 +15,5 @@ $ make run
 
 ### Credits
 
-Forked from https://github.com/raghavan/PdfGptIndexer. Thanks to @raghavan for
-sharing his code!
+Forked from https://github.com/raghavan/PdfGptIndexer. Thanks to
+[@raghavan](https://github.com/raghavan/) for sharing his code!
