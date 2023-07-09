@@ -1,4 +1,4 @@
-import textract
+#import textract
 from transformers import GPT2TokenizerFast
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings
@@ -6,8 +6,10 @@ import os
 from langchain.vectorstores import FAISS
 from langchain.llms import OpenAI
 from langchain.chains import ConversationalRetrievalChain
+from bs4 import BeautifulSoup
+from markdown import markdown
 
-def process_pdf_folder(pdf_folder_name,txt_folder_name):
+def process_vimwiki_folder(dir_name,txt_folder_name):
     # Initialize tokenizer
     tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
@@ -25,41 +27,41 @@ def process_pdf_folder(pdf_folder_name,txt_folder_name):
     all_chunks = []
 
     # Iterate over all files in the folder
-    for filename in os.listdir(pdf_folder_name):
-        # Only process PDF files
-        if filename.endswith(".pdf"):
-            # Full path to the file
-            filepath = os.path.join(pdf_folder_name, filename)
+    for dirpath, dnames, fnames in os.walk(dir_name):
+        # Only process md files
+        ext = ".md"
+        print("Reading dir %s..." % dirpath)
+        for filename in fnames:
+            if filename.endswith(ext):
+                print("\tReading file %s... " % filename)
+                # Full path to the file
+                filepath = os.path.join(dirpath, filename)
+                file = open(filepath, mode='r')
+                file_contents = file.read()
+                file.close()
 
-            # Extract text from the PDF file
-            doc = textract.process(filepath)
+                # Extract text from the PDF file
+                #doc = textract.process(filepath)
+                html = markdown(file_contents)
+                text = ''.join(BeautifulSoup(html).findAll(text=True))
 
-            # Write the extracted text to a .txt file
-            txt_filename = filename.replace(".pdf", ".txt")
-            txt_filepath = os.path.join(txt_folder_name, txt_filename)
+                # Split the text into chunks
+                chunks = text_splitter.create_documents([text])
 
-            with open(txt_filepath, 'w') as f:
-                f.write(doc.decode('utf-8'))
-
-            # Read the .txt file
-            with open(txt_filepath, 'r') as f:
-                text = f.read()
-
-            # Split the text into chunks
-            chunks = text_splitter.create_documents([text])
-
-            # Add chunks to the array
-            all_chunks.append(chunks)
+                # Add chunks to the array
+                all_chunks.append(chunks)
 
     # Return the array of chunks
     return all_chunks
 
 # Create embeddings 
-os.environ["OPENAI_API_KEY"] = "<OPENAI_API_KEY>"
+if not "OPENAI_API_KEY" in os.environ:
+    raise SystemExit("OPENAI_API_KEY env missing")
+
 embeddings = OpenAIEmbeddings()
 
 # Store embeddings to vector db
-all_chunks = process_pdf_folder("./pdf", "./text");
+all_chunks = process_vimwiki_folder("/home/gs/wiki", "./text");
 db =  FAISS.from_documents(all_chunks[0], embeddings) 
 for chunk in all_chunks[1:]:
     db_temp = FAISS.from_documents(chunk, embeddings)
